@@ -163,8 +163,9 @@ unticked: the flag stops clients using DHT and peer exchange, which a public swa
 on. An unrecognised value is treated as `disallow`.
 
 Downloads, for guests and members alike, get hound's own announce URL and a `comment`
-linking the torrent's page, around the untouched info dictionary. Everything else the
-uploader's client wrote, `announce-list` included, is dropped.
+linking the torrent's page, around the untouched info dictionary (and its `encoding`, if
+the file has one). Everything else the uploader's client wrote, `announce-list` included,
+is dropped.
 
 ### IP limiting
 
@@ -174,20 +175,20 @@ only one available.
 | Key | Default | Description |
 |-----|---------|-------------|
 | `ip_limiting.enabled` | `true` | Enable the per-IP peer cap |
-| `ip_limiting.max_per_ip` | `50` | Max distinct peer IDs from one IP |
+| `ip_limiting.max_peers_per_torrent` | `10` | Live peers one address may have on one torrent |
 
 ```env
 HOUND_IP_LIMITING=true
-HOUND_MAX_PER_IP=50
+HOUND_MAX_PEERS_PER_TORRENT=10
 ```
 
-At the cap, **every** announce from that IP gets a bencoded `Too many connections from your
-IP` failure, including re-announces from peers already in the swarm and `stopped` (so
-those peers leave only when they expire). The count is of distinct peer IDs across all
-torrents, so a client that uses one peer ID for every torrent counts once. Raise it if you
-expect legitimate NAT'd or institutional traffic. Before threepio 3.2.1, dead peers could
-stay in the IP count for good, locking a busy IP out. Hound accepts any threepio 3.x, so
-make sure you're on 3.2.1 or later for the fix (#10804).
+The cap is per torrent. At it, a **new** peer from that address on that torrent gets a
+bencoded `Too many peers from your address on this torrent` failure. A peer already in the
+swarm is never refused by the count, so it can keep announcing and send `stopped`. How
+many torrents one address announces is never limited: a seedbox seeding hundreds of
+torrents from one address is the healthiest thing a public tracker sees. Raise the cap if
+you expect many users behind one address (CGNAT, a university) on the same torrent. Before threepio 3.2.1, dead peers could stay in the IP count
+for good, locking a busy IP out (#10804).
 
 ### Logging — planned, not yet built
 

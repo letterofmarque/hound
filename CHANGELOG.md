@@ -7,6 +7,39 @@ follows the suite's [VERSIONING.md](../../VERSIONING.md). This changelog starts
 2026-08-26 — earlier releases aren't backfilled; see `git log` or
 [docs/upgrading.md](../../docs/upgrading.md) for the story up to this point.
 
+## [5.0.0] — 2026-10-20
+
+> The per-IP cap counts one address's peers on one torrent, so an address may seed any number of torrents; binary info hashes and peer IDs are read intact, and a scrape answers for every torrent it names.
+
+### Changed (breaking)
+
+- **Requires `marque/threepio` ^4.0**, for its session-based per-IP count and the raw
+  query reader.
+- **The per-IP cap is per torrent: `ip_limiting.max_peers_per_torrent` (10) replaces
+  `max_per_ip`.** It counts the live peers one address has on one torrent, which is what
+  pollutes a swarm. The old cap counted across every torrent, so a public seedbox seeding
+  hundreds of torrents from one address was refused once it passed 50. How many torrents
+  an address seeds is no longer limited. Rename the key in a published config, and
+  `HOUND_MAX_PER_IP` to `HOUND_MAX_PEERS_PER_TORRENT` in `.env`; `max_per_ip` is ignored.
+  The old figure capped every torrent together, so choose a per-torrent one rather than
+  carrying it over.
+
+### Fixed
+
+- **A peer ID that isn't UTF-8 text was never recorded** (threepio's record JSON-encoded
+  to nothing); it now is (#11058).
+
+- **About one torrent in twenty could never be announced or scraped**, and some clients
+  were refused: Laravel's TrimStrings middleware stripped NUL and whitespace bytes from the
+  ends of the binary `info_hash` and `peer_id`. Both are now read from the raw query
+  string (#11057).
+- **A scrape for several torrents answered for only the last.** Every repeated
+  `info_hash` is read now.
+
+- **An address at the cap was refused on its own next announce.** The count included the
+  announcing peer, so it could neither keep seeding nor send `stopped`, and its peers aged
+  out of the swarm. Only a new peer is refused now.
+
 ## [4.0.0] — 2026-10-06
 
 > Downloads carry hound's open announce URL, and uploads must be public torrents by default.
